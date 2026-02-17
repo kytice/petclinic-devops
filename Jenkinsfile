@@ -31,10 +31,12 @@ pipeline {
             junit '**/target/surefire-reports/*.xml'
         }
         success {
-            echo 'Build and tests passed!'
+            slackSend color: 'good',
+                message: "Build #${env.BUILD_NUMBER} passed - ${env.JOB_NAME}"
         }
         failure {
-            echo 'Something failed!'
+            slackSend color: 'danger',
+                message: "Build #${env.BUILD_NUMBER} failed - ${env.JOB_NAME}"
         }
     }
 }
