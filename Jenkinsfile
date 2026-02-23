@@ -40,6 +40,7 @@ pipeline {
                         -Dsonar.host.url=https://sonarcloud.io \
                         -Dsonar.token=${SONAR_TOKEN}
                         """
+                }
             }
         }
 
@@ -56,6 +57,7 @@ pipeline {
                 sh 'curl -f http://localhost:9090 || exit 1'
             }
         }
+    }
 
     post {
         always {
@@ -70,5 +72,4 @@ pipeline {
                 message: "Build #${env.BUILD_NUMBER} failed - ${env.JOB_NAME}"
         }
     }
-}
 }
