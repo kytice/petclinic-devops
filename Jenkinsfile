@@ -71,11 +71,17 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to AWS') {
             steps {
-                sh 'nohup java -jar target/*.jar --server.port=9090 &'
-                sh 'sleep 30'
-                sh 'curl -f http://localhost:9090 || exit 1'
+                sshagent(['aws-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@108.130.73.98 \
+                        'docker pull kytice/petclinic:latest && \
+                         docker stop petclinic-app || true && \
+                         docker rm petclinic-app || true && \
+                         docker run -d --name petclinic-app -p 8080:8080 --network monitoring kytice/petclinic:latest'
+                    """
+                }
             }
         }
     }
