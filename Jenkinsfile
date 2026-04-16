@@ -71,8 +71,9 @@ pipeline {
             steps {
                 sshagent(['aws-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@108.130.73.98 \
-                        'docker pull kytice/petclinic:latest && \
+                        ssh -o StrictHostKeyChecking=no ubuntu@54.247.218.30 \
+                        'docker system prune -af; \
+                         docker pull kytice/petclinic:latest && \
                          docker stop petclinic-app; \
                          docker rm petclinic-app; \
                          docker run -d --name petclinic-app -p 8080:8080 --network monitoring kytice/petclinic:latest'
