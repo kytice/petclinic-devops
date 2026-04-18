@@ -71,7 +71,7 @@ pipeline {
             steps {
                 sshagent(['aws-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@108.129.170.85 \
+                        ssh -o StrictHostKeyChecking=no ubuntu@63.35.234.28 \
                         'docker pull kytice/petclinic:latest && \
                          docker stop petclinic-app; \
                          docker rm petclinic-app; \

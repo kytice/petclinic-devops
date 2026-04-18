@@ -1,118 +1,143 @@
 ---
-         - name: Setup PetClinic Server
-           hosts: petclinic
-           become: yes
+- name: Setup PetClinic Server
+  hosts: petclinic
+  become: yes
 
-           tasks:
-             - name: Update packages
-               apt:
-                 update_cache: yes
+  tasks:
+    - name: Create swap file
+      command: dd if=/dev/zero of=/swapfile bs=128M count=16
+      args:
+        creates: /swapfile
 
-             - name: Install Docker dependencies
-               apt:
-                 name:
-                   - apt-transport-https
-                   - ca-certificates
-                   - curl
-                   - software-properties-common
-                 state: present
+    - name: Set swap file permissions
+      file:
+        path: /swapfile
+        mode: '0600'
 
-             - name: Add Docker GPG key
-               apt_key:
-                 url: https://download.docker.com/linux/ubuntu/gpg
-                 state: present
+    - name: Make swap space
+      command: mkswap /swapfile
+      args:
+        creates: /swapfile
 
-             - name: Add Docker repository
-               apt_repository:
-                 repo: deb https://download.docker.com/linux/ubuntu jammy stable
-                 state: present
+    - name: Enable swap
+      command: swapon /swapfile
+      ignore_errors: yes
 
-             - name: Install Docker
-               apt:
-                 name: docker-ce
-                 state: present
+    - name: Add swap to fstab
+      lineinfile:
+        path: /etc/fstab
+        line: '/swapfile swap swap defaults 0 0'
+        state: present
 
-             - name: Start Docker service
-               service:
-                 name: docker
-                 state: started
-                 enabled: yes
+    - name: Update packages
+      apt:
+        update_cache: yes
 
-             - name: Add ubuntu user to docker group
-               user:
-                 name: ubuntu
-                 groups: docker
-                 append: yes
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
 
-             - name: Install pip
-               apt:
-                 name: python3-pip
-                 state: present
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
 
-             - name: Install Docker Python module
-               pip:
-                 name: docker
-                 state: present
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu jammy stable
+        state: present
 
-             - name: Create Docker network
-               docker_network:
-                 name: monitoring
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
 
-             - name: Pull PetClinic image
-               docker_image:
-                 name: kytice/petclinic
-                 tag: latest
-                 source: pull
-                 force_source: yes
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
-             - name: Run PetClinic container
-               docker_container:
-                 name: petclinic-app
-                 image: kytice/petclinic:latest
-                 ports:
-                   - "8080:8080"
-                 networks:
-                   - name: monitoring
-                 state: started
-                 restart_policy: always
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
 
-             - name: Create Prometheus config directory
-               file:
-                 path: /opt/prometheus
-                 state: directory
+    - name: Install pip
+      apt:
+        name: python3-pip
+        state: present
 
-             - name: Copy Prometheus config
-               copy:
-                 dest: /opt/prometheus/prometheus.yml
-                 content: |
-                   global:
-                     scrape_interval: 15s
-                   scrape_configs:
-                     - job_name: 'petclinic'
-                       metrics_path: '/actuator/prometheus'
-                       static_configs:
-                         - targets: ['petclinic-app:8080']
+    - name: Install Docker Python module
+      pip:
+        name: docker
+        state: present
 
-             - name: Run Prometheus container
-               docker_container:
-                 name: prometheus
-                 image: prom/prometheus:latest
-                 ports:
-                   - "9090:9090"
-                 volumes:
-                   - /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-                 networks:
-                   - name: monitoring
-                 state: started
-                 restart_policy: always
+    - name: Create Docker network
+      docker_network:
+        name: monitoring
 
-             - name: Run Grafana container
-               docker_container:
-                 name: grafana
-                 image: grafana/grafana:latest
-                 ports:
-                   - "3000:3000"
-                 networks:
-                   - name: monitoring
-                 state: started
-                 restart_policy: always
+    - name: Pull PetClinic image
+      docker_image:
+        name: kytice/petclinic
+        tag: latest
+        source: pull
+        force_source: yes
+
+    - name: Run PetClinic container
+      docker_container:
+        name: petclinic-app
+        image: kytice/petclinic:latest
+        ports:
+          - "8080:8080"
+        networks:
+          - name: monitoring
+        state: started
+        restart_policy: always
+
+    - name: Create Prometheus config directory
+      file:
+        path: /opt/prometheus
+        state: directory
+
+    - name: Copy Prometheus config
+      copy:
+        dest: /opt/prometheus/prometheus.yml
+        content: |
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: 'petclinic'
+              metrics_path: '/actuator/prometheus'
+              static_configs:
+                - targets: ['petclinic-app:8080']
+
+    - name: Run Prometheus container
+      docker_container:
+        name: prometheus
+        image: prom/prometheus:latest
+        ports:
+          - "9090:9090"
+        volumes:
+          - /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        networks:
+          - name: monitoring
+        state: started
+        restart_policy: always
+
+    - name: Run Grafana container
+      docker_container:
+        name: grafana
+        image: grafana/grafana:latest
+        ports:
+          - "3000:3000"
+        networks:
+          - name: monitoring
+        state: started
+        restart_policy: always
